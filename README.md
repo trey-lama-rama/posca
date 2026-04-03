@@ -152,6 +152,32 @@ Or use the interactive query tool:
 python3 tools/query.py "venture capital contacts"
 ```
 
+## Talk to it through your AI agent
+
+The real interface isn't SQL — it's conversation. If you run an AI agent (Claude Code, OpenClaw, a custom GPT, or anything with tool access), point it at the database and just ask questions in natural language:
+
+> **"When is Howard Dasher's birthday?"**
+> August 6th.
+
+> **"Who haven't I talked to in 6 months that I should?"**
+> 12 hot/warm contacts are stale. The most overdue are...
+
+> **"Draft a happy birthday email to everyone with a birthday this week."**
+> Found 3 contacts with birthdays this week: ...
+
+> **"What's Matt Sprang's company and how do I reach him?"**
+> Matt Sprang — INS Capital Group, 330-465-3175, www.inscapitalgroup.com
+
+> **"Who did I meet with last Tuesday?"**
+> You had calendar events with 4 people: ...
+
+> **"Add a follow-up reminder for Julie Mateo next Thursday."**
+> Created action item: Follow up with Julie Mateo, due 2026-04-10.
+
+Your agent just runs `sqlite3` queries against `data/crm.db` under the hood. No API, no SDK, no integration work. If the agent can run shell commands, it can use the CRM.
+
+This is the point of headless: the database is the API, and any tool that can read SQLite is a client — including the AI assistant you're already talking to.
+
 ## Nightly automation
 
 Add to your crontab:
