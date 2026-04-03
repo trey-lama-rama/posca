@@ -58,7 +58,7 @@ def get_contacts_to_mine(conn, limit, force=False, heat="hot,warm"):
             FROM contacts
             WHERE relationship_heat IN ({placeholders})
               AND emails != '[]'
-            ORDER BY relationship_score DESC NULLS LAST
+            ORDER BY COALESCE(relationship_score, 0) DESC
             LIMIT ?
         """
         return conn.execute(query, heat_list + [limit]).fetchall()
@@ -72,7 +72,7 @@ def get_contacts_to_mine(conn, limit, force=False, heat="hot,warm"):
                OR address IS NULL OR address = '')
           AND relationship_heat IN ({placeholders})
           AND emails != '[]'
-        ORDER BY relationship_score DESC NULLS LAST
+        ORDER BY COALESCE(relationship_score, 0) DESC
         LIMIT ?
     """
     return conn.execute(query, heat_list + [limit]).fetchall()

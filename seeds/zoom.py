@@ -55,8 +55,10 @@ stats = {
 }
 
 
-# -- Schema Migration ----------------------------------------------------------
-def migrate_schema(conn):
+# -- Schema Migration (extracted to migrations/migrate_zoom_schema.py) ---------
+from migrations.migrate_zoom_schema import migrate_schema  # noqa: E402
+
+def _migrate_schema_original(conn):
     """Expand CHECK constraints to support zoom channel, pending_approval status, owner column."""
     conn.execute("PRAGMA foreign_keys=OFF")
 

@@ -83,7 +83,7 @@ def get_contacts_to_enrich(conn, limit, force=False, min_data=False):
     if force:
         query = """
             SELECT id, name, emails, company, role, notes FROM contacts
-            ORDER BY last_contact_date DESC NULLS LAST LIMIT ?
+            ORDER BY last_contact_date DESC LIMIT ?
         """
         return conn.execute(query, (limit,)).fetchall()
 
@@ -94,14 +94,14 @@ def get_contacts_to_enrich(conn, limit, force=False, min_data=False):
             WHERE (company IS NULL OR company = '')
               AND (role IS NULL OR role = '')
               AND enriched_at IS NULL
-            ORDER BY last_contact_date DESC NULLS LAST LIMIT ?
+            ORDER BY last_contact_date DESC LIMIT ?
         """
     else:
         query = """
             SELECT id, name, emails, company, role, notes FROM contacts
             WHERE (company IS NULL OR company = '' OR role IS NULL OR role = '')
               AND enriched_at IS NULL
-            ORDER BY last_contact_date DESC NULLS LAST LIMIT ?
+            ORDER BY last_contact_date DESC LIMIT ?
         """
     return conn.execute(query, (limit,)).fetchall()
 

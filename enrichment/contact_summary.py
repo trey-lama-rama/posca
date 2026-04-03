@@ -169,7 +169,7 @@ def main():
             SELECT * FROM contacts
             WHERE relationship_heat IN ({placeholders})
               AND (ai_summary_at IS NULL)
-            ORDER BY relationship_score DESC NULLS LAST
+            ORDER BY COALESCE(relationship_score, 0) DESC
             LIMIT ?
         """, heat_list + [args.limit]).fetchall()
     elif has_heat:
@@ -177,7 +177,7 @@ def main():
         contacts = conn.execute(f"""
             SELECT * FROM contacts
             WHERE relationship_heat IN ({placeholders})
-            ORDER BY relationship_score DESC NULLS LAST
+            ORDER BY COALESCE(relationship_score, 0) DESC
             LIMIT ?
         """, heat_list + [args.limit]).fetchall()
     else:
@@ -185,7 +185,7 @@ def main():
         contacts = conn.execute("""
             SELECT * FROM contacts
             WHERE ai_summary_at IS NULL
-            ORDER BY last_contact_date DESC NULLS LAST
+            ORDER BY COALESCE(last_contact_date, '') DESC
             LIMIT ?
         """, (args.limit,)).fetchall()
 
@@ -212,7 +212,7 @@ def main():
                 (new_notes, now, now, c["id"])
             )
             conn.commit()
-            log(f"  Summarized: {c['name']} ({c['relationship_heat'] if c['relationship_heat'] else '?'})")
+            log(f"  Summarized: {c['name']} ({c.get('relationship_heat', '?') or '?'})")
             generated += 1
         else:
             log(f"  Skipped (no summary): {c['name']}")

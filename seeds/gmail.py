@@ -22,8 +22,7 @@ from config import DB_PATH, ACCOUNTS, GOG_BIN
 # LLM filter — lazy import; gracefully degrades if unavailable
 def _llm_filter_available():
     try:
-        import importlib
-        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
         import llm_filter  # noqa: F401
         return True
     except Exception:
@@ -205,7 +204,6 @@ def upsert_contact(conn, name, email, default_rel_type, source_account, msg_date
         if email:
             existing_emails.add(email)
 
-        update_kwargs = [json.dumps(list(existing_emails)), now]
         if should_update_last and msg_date:
             conn.execute("""
                 UPDATE contacts SET emails=?, last_contact_date=?, last_contact_channel='email', updated_at=? WHERE id=?

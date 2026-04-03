@@ -139,33 +139,33 @@ def handle_roam_recording_saved(payload):
 
     log.info(f"Recording: {recording_id} | Room: {location} | Transcript: {transcript_id}")
 
-    # Run seed_roam.py to process this recording
-    seed_roam_path = str(ROOT / "seeds" / "seed_roam.py")
+    # Run roam seed to process this recording
+    seed_roam_path = str(ROOT / "seeds" / "roam.py")
     try:
         result = subprocess.run(
             [sys.executable, seed_roam_path,
              "--recording-id", str(recording_id)],
             capture_output=True, text=True, timeout=120,
         )
-        log.info(f"seed_roam.py output: {result.stdout[-500:]}")
+        log.info(f"roam.py seed output: {result.stdout[-500:]}")
         if result.returncode != 0:
-            log.error(f"seed_roam.py error: {result.stderr[-200:]}")
+            log.error(f"roam.py seed error: {result.stderr[-200:]}")
     except Exception as e:
-        log.error(f"Failed to run seed_roam.py: {e}")
+        log.error(f"Failed to run roam.py seed: {e}")
 
 
 def handle_zoom_recording(payload):
     """Process recording.completed event from Zoom"""
     log.info(f"Zoom recording event received: {json.dumps(payload)[:200]}")
-    seed_zoom_path = str(ROOT / "seeds" / "seed_zoom.py")
+    seed_zoom_path = str(ROOT / "seeds" / "zoom.py")
     try:
         result = subprocess.run(
             [sys.executable, seed_zoom_path],
             capture_output=True, text=True, timeout=120,
         )
-        log.info(f"seed_zoom.py output: {result.stdout[-500:]}")
+        log.info(f"zoom.py seed output: {result.stdout[-500:]}")
     except Exception as e:
-        log.error(f"Failed to run seed_zoom.py: {e}")
+        log.error(f"Failed to run zoom.py seed: {e}")
 
 
 class WebhookHandler(BaseHTTPRequestHandler):

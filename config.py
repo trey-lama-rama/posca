@@ -110,3 +110,28 @@ GENERIC_DOMAINS = {
     "me.com", "mac.com", "msn.com", "live.com", "aol.com", "protonmail.com",
     "pm.me", "fastmail.com", "hey.com",
 }
+
+
+def get_conn():
+    """Get a configured SQLite connection."""
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    return conn
+
+
+if __name__ == "__main__":
+    print("=== Headless CRM Config ===")
+    print(f"  ROOT:      {ROOT}")
+    print(f"  DB_PATH:   {DB_PATH}")
+    print(f"  LOG_DIR:   {LOG_DIR}")
+    print(f"  Accounts:  {len(ACCOUNTS)}")
+    for a in ACCOUNTS:
+        print(f"    - {a['label']} ({a['address']})")
+    print(f"  GOG_BIN:   {GOG_BIN}")
+    print(f"  Model:     {ENRICHMENT_MODEL}")
+    print(f"  Stale days: {STALE_THRESHOLD_DAYS}")
+    print(f"  iCloud:    {'configured' if ICLOUD_USER else 'not configured'}")
+    print(f"  Zoom:      {'configured' if ZOOM_ACCOUNT_ID else 'not configured'}")
+    print(f"  Supabase:  {'configured' if SUPABASE_URL else 'not configured'}")

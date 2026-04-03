@@ -123,14 +123,14 @@ def insert_contact(conn, name, email, source_account, msg_date):
     conn.execute("""
         INSERT INTO contacts (
             id, name, emails, phones, company, role,
-            relationship_type, relationship_heat,
+            relationship_type,
             source_account,
             first_seen_date, last_contact_date, last_contact_channel,
             stale_flag, notes,
             created_at, updated_at
         ) VALUES (
             ?, ?, ?, '[]', NULL, NULL,
-            'unknown', 'cold',
+            'unknown',
             ?,
             ?, ?, 'email',
             0, 'Auto-discovered from sent mail scan -- needs review',

@@ -24,10 +24,10 @@ MAX_RESULTS = 10
 def _try_semantic_search(query, top_k=10):
     """Try semantic search via embed.py; returns list of (contact_id, score) or []."""
     try:
-        tools_dir = str(Path(__file__).resolve().parent)
-        if tools_dir not in sys.path:
-            sys.path.insert(0, tools_dir)
-        from embed import search_semantic
+        repo_root = str(Path(__file__).resolve().parent.parent)
+        if repo_root not in sys.path:
+            sys.path.insert(0, repo_root)
+        from enrichment.embed import search_semantic
         return search_semantic(query, top_k=top_k)
     except Exception as e:
         return []
@@ -650,7 +650,7 @@ def handle_show_reminders(conn):
         JOIN contacts c ON c.id = ai.contact_id
         WHERE ai.status IN ('open','waiting_them')
           AND (ai.snoozed_until IS NULL OR ai.snoozed_until <= ?)
-        ORDER BY ai.due_date ASC NULLS LAST
+        ORDER BY COALESCE(ai.due_date, '9999-12-31') ASC
         LIMIT 30
     """, (today,)).fetchall()
 

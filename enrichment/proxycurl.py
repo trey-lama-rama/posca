@@ -202,27 +202,49 @@ def main():
     conn = get_conn()
     ensure_linkedin_columns(conn)
 
-    # Query contacts to enrich
+    # Query contacts to enrich — check if relationship_heat column exists
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(contacts)").fetchall()}
+    has_heat = "relationship_heat" in cols
+
     placeholders = ",".join("?" * len(heat_tiers))
-    if args.force:
+    if has_heat and args.force:
         query = f"""
             SELECT id, name, emails, company, notes
             FROM contacts
             WHERE relationship_heat IN ({placeholders})
-            ORDER BY relationship_score DESC
+            ORDER BY COALESCE(relationship_score, 0) DESC
             LIMIT ?
         """
         rows = conn.execute(query, heat_tiers + [args.limit]).fetchall()
-    else:
+    elif has_heat:
         query = f"""
             SELECT id, name, emails, company, notes
             FROM contacts
             WHERE relationship_heat IN ({placeholders})
               AND (linkedin_enriched_at IS NULL OR linkedin_enriched_at = '')
-            ORDER BY relationship_score DESC
+            ORDER BY COALESCE(relationship_score, 0) DESC
             LIMIT ?
         """
         rows = conn.execute(query, heat_tiers + [args.limit]).fetchall()
+    else:
+        # relationship_heat column doesn't exist yet — process all contacts
+        if args.force:
+            query = """
+                SELECT id, name, emails, company, notes
+                FROM contacts
+                ORDER BY last_contact_date DESC
+                LIMIT ?
+            """
+            rows = conn.execute(query, [args.limit]).fetchall()
+        else:
+            query = """
+                SELECT id, name, emails, company, notes
+                FROM contacts
+                WHERE (linkedin_enriched_at IS NULL OR linkedin_enriched_at = '')
+                ORDER BY last_contact_date DESC
+                LIMIT ?
+            """
+            rows = conn.execute(query, [args.limit]).fetchall()
 
     print(f"Proxycurl enrichment -- {len(rows)} contacts | heat: {args.heat} | dry_run: {args.dry_run}")
     print(f"Estimated cost: ${len(rows) * 0.04:.2f} (resolve + profile per contact)\n")
