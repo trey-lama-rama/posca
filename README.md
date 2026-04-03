@@ -2,6 +2,24 @@
 
 A CLI-first personal CRM that runs entirely from scripts and cron jobs. No browser, no GUI, no SaaS dashboard.
 
+## Why headless?
+
+Every CRM fails the same way: you stop opening it. The app sits there waiting for you to log in, type notes, update contacts, and categorize deals. You do it for a week, maybe two, then you stop. The data goes stale. Six months later you're back to searching your inbox.
+
+Headless CRM inverts the model. **You never open it because there's nothing to open.** It reads the systems you already use — email, calendar, contacts, meeting recordings — and builds your relationship database automatically. No data entry. No forms. No tabs to remember to check.
+
+The database updates itself every night. Contacts appear when you email someone. Relationships get scored by how recently and frequently you interact. Birthdays and addresses get mined from your email history. AI fills in job titles and company names. Stale relationships get flagged.
+
+When you need something, you query it:
+
+```bash
+sqlite3 data/crm.db "SELECT name, birthday FROM contacts WHERE birthday LIKE '%-04-%' ORDER BY birthday;"
+```
+
+Or pipe it into whatever tool you want — a dashboard, a script, an AI agent. The database is a single SQLite file. It doesn't care how you read it.
+
+**The best CRM is the one that works when you forget about it.**
+
 ## What it does
 
 - **Automatically builds your contact database** from Gmail, Google Calendar, iCloud Contacts, Zoom recordings, and ro.am transcripts
