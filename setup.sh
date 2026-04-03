@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup.sh — Initialize Headless CRM
+# setup.sh — Initialize Posca
 # Creates database, applies schema, copies config templates.
 
 set -euo pipefail
@@ -7,7 +7,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "=== Headless CRM Setup ==="
+echo "=== Posca Setup ==="
 
 # Install Python dependencies
 echo "Installing Python dependencies..."

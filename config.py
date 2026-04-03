@@ -1,5 +1,5 @@
 """
-Centralized configuration for Headless CRM.
+Centralized configuration for Posca.
 Reads settings from config.yaml and secrets from .env.
 All paths are relative to the repo root.
 """
@@ -122,7 +122,7 @@ def get_conn():
 
 
 if __name__ == "__main__":
-    print("=== Headless CRM Config ===")
+    print("=== Posca Config ===")
     print(f"  ROOT:      {ROOT}")
     print(f"  DB_PATH:   {DB_PATH}")
     print(f"  LOG_DIR:   {LOG_DIR}")

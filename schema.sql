@@ -1,4 +1,4 @@
--- Headless CRM Schema
+-- Posca Schema
 -- SQLite with FTS5
 -- Idempotent: all CREATE statements use IF NOT EXISTS
 

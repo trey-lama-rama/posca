@@ -1,12 +1,14 @@
-# Headless CRM
+# Posca
 
-A CLI-first personal CRM that runs entirely from scripts and cron jobs. No browser, no GUI, no SaaS dashboard.
+*Named after the servant of Julius Caesar — always on hand to remember the names, birthdays, and debts of Roman society so Caesar didn't have to.*
+
+A headless personal CRM that runs entirely from scripts and cron jobs. No browser, no GUI, no SaaS dashboard. Posca watches your email, calendar, and contacts, and quietly builds a complete picture of everyone you know — so when you need to remember, you just ask.
 
 ## Why headless?
 
 Every CRM fails the same way: you stop opening it. The app sits there waiting for you to log in, type notes, update contacts, and categorize deals. You do it for a week, maybe two, then you stop. The data goes stale. Six months later you're back to searching your inbox.
 
-Headless CRM inverts the model. **You never open it because there's nothing to open.** It reads the systems you already use — email, calendar, contacts, meeting recordings — and builds your relationship database automatically. No data entry. No forms. No tabs to remember to check.
+Posca inverts the model. **You never open it because there's nothing to open.** It reads the systems you already use — email, calendar, contacts, meeting recordings — and builds your relationship database automatically. No data entry. No forms. No tabs to remember to check.
 
 The database updates itself every night. Contacts appear when you email someone. Relationships get scored by how recently and frequently you interact. Birthdays and addresses get mined from your email history. AI fills in job titles and company names. Stale relationships get flagged.
 
@@ -43,8 +45,8 @@ Or pipe it into whatever tool you want — a dashboard, a script, an AI agent. T
 ## Quick start
 
 ```bash
-git clone https://github.com/yourusername/headless-crm.git
-cd headless-crm
+git clone https://github.com/yourusername/posca.git
+cd posca
 bash setup.sh
 ```
 
@@ -185,7 +187,7 @@ Add to your crontab:
 ```bash
 crontab -e
 # Add:
-0 2 * * * cd /path/to/headless-crm && bash sync.sh >> logs/cron.log 2>&1
+0 2 * * * cd /path/to/posca && bash sync.sh >> logs/cron.log 2>&1
 ```
 
 ## Architecture
