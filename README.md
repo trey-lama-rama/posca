@@ -156,8 +156,8 @@ python3 tools/query.py "venture capital contacts"
 
 The real interface isn't SQL — it's conversation. If you run an AI agent (Claude Code, OpenClaw, a custom GPT, or anything with tool access), point it at the database and just ask questions in natural language:
 
-> **"When is Howard Dasher's birthday?"**
-> August 6th.
+> **"When is Sarah's birthday?"**
+> March 15th.
 
 > **"Who haven't I talked to in 6 months that I should?"**
 > 12 hot/warm contacts are stale. The most overdue are...
@@ -165,14 +165,14 @@ The real interface isn't SQL — it's conversation. If you run an AI agent (Clau
 > **"Draft a happy birthday email to everyone with a birthday this week."**
 > Found 3 contacts with birthdays this week: ...
 
-> **"What's Matt Sprang's company and how do I reach him?"**
-> Matt Sprang — INS Capital Group, 330-465-3175, www.inscapitalgroup.com
+> **"What's James Chen's company and how do I reach him?"**
+> James Chen — Apex Partners, 555-234-5678, www.apexpartners.com
 
 > **"Who did I meet with last Tuesday?"**
 > You had calendar events with 4 people: ...
 
-> **"Add a follow-up reminder for Julie Mateo next Thursday."**
-> Created action item: Follow up with Julie Mateo, due 2026-04-10.
+> **"Add a follow-up reminder for Rachel next Thursday."**
+> Created action item: Follow up with Rachel Torres, due next Thursday.
 
 Your agent just runs `sqlite3` queries against `data/crm.db` under the hood. No API, no SDK, no integration work. If the agent can run shell commands, it can use the CRM.
 
