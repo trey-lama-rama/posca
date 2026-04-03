@@ -1,0 +1,37 @@
+# Headless CRM Configuration
+# Copy this file to config.yaml and edit to match your setup.
+
+database: data/crm.db
+log_dir: logs
+
+# Email accounts to sync (Gmail via GOG CLI)
+accounts:
+  - address: you@example.com
+    label: Primary
+    default_rel_type: warm
+  - address: you@work.com
+    label: Work
+    default_rel_type: cold-inbound
+
+# iCloud Contacts (CardDAV)
+# Find your CardDAV URL in macOS Contacts > Account settings
+icloud:
+  carddav_base: https://pXX-contacts.icloud.com/XXXXXXX/carddavhome/card/
+  user: your-apple-id@icloud.com
+
+# Zoom (for meeting transcript ingestion)
+zoom:
+  user_email: you@example.com
+
+# AI enrichment settings
+enrichment:
+  model: gpt-4o-mini
+  tavily_script: null  # optional: path to tavily search script
+  rate_limit_seconds: 1.2
+
+# Nightly sync settings
+sync:
+  stale_threshold_days: 180
+  enrich_limit: 30
+  gmail_mine_limit: 20
+  summary_limit: 20
