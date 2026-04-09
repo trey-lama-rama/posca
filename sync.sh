@@ -100,6 +100,15 @@ log "Step 9: Categorizing interactions by type..."
 python3 enrichment/categorize.py --limit 500 2>&1 | tee -a "$LOG"
 log "Interaction categorization done."
 
+# ── Step 9b: Apollo.io enrichment ────────────────────────────────────────────
+if [ -n "${APOLLO_API_KEY:-}" ]; then
+    log "Step 9b: Apollo.io enrichment (limit 500)..."
+    python3 enrichment/apollo.py --limit 500 2>&1 | tee -a "$LOG"
+    log "Apollo enrichment done."
+else
+    log "Step 9b: Skipping Apollo enrichment (APOLLO_API_KEY not set)."
+fi
+
 # ── Step 10: Enrich contacts ─────────────────────────────────────────────────
 log "Step 10: Enriching contacts (limit 30)..."
 python3 enrichment/enrich.py --limit 30 --min-data 2>&1 | tee -a "$LOG"
@@ -138,6 +147,7 @@ STALE=$(sqlite3 "$DB" "SELECT COUNT(*) FROM contacts WHERE stale_flag=1;" 2>/dev
 INTERACTIONS=$(sqlite3 "$DB" "SELECT COUNT(*) FROM interactions;" 2>/dev/null || echo "?")
 ACTIONS=$(sqlite3 "$DB" "SELECT COUNT(*) FROM action_items WHERE status='open';" 2>/dev/null || echo "?")
 ENRICHED=$(sqlite3 "$DB" "SELECT COUNT(*) FROM contacts WHERE enriched_at IS NOT NULL;" 2>/dev/null || echo "?")
+APOLLO_ENRICHED=$(sqlite3 "$DB" "SELECT COUNT(*) FROM contacts WHERE apollo_enriched_at IS NOT NULL;" 2>/dev/null || echo "?")
 HOT=$(sqlite3 "$DB" "SELECT COUNT(*) FROM contacts WHERE relationship_heat='hot';" 2>/dev/null || echo "?")
 WARM=$(sqlite3 "$DB" "SELECT COUNT(*) FROM contacts WHERE relationship_heat='warm';" 2>/dev/null || echo "?")
 WITH_BIRTHDAY=$(sqlite3 "$DB" "SELECT COUNT(*) FROM contacts WHERE birthday IS NOT NULL AND birthday <> '';" 2>/dev/null || echo "?")
@@ -147,6 +157,7 @@ GMAIL_MINED=$(sqlite3 "$DB" "SELECT COUNT(*) FROM contacts WHERE gmail_mined_at 
 log "Total contacts:      $TOTAL"
 log "Stale (>$STALE_DAYS days): $STALE"
 log "Enriched contacts:   $ENRICHED"
+log "Apollo-enriched:     $APOLLO_ENRICHED"
 log "Hot contacts:        $HOT"
 log "Warm contacts:       $WARM"
 log "With birthday:       $WITH_BIRTHDAY"
