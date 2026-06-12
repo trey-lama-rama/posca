@@ -19,11 +19,11 @@ import sqlite3
 import sys
 import uuid
 from datetime import datetime
-from difflib import SequenceMatcher
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import DB_PATH, ROAM_API_KEY
+from contact_lookup import ContactLookup
 
 import requests
 
@@ -92,31 +92,19 @@ def api_get(path, params=None):
 
 # -- Contact helpers -----------------------------------------------------------
 
-def name_similarity(a, b):
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
-
-
-def find_existing_contact(conn, email, name):
+def find_existing_contact(lookup, email, name):
     if email:
-        rows = conn.execute("SELECT id FROM contacts WHERE emails LIKE ?", (f"%{email}%",)).fetchall()
-        for row in rows:
-            full = conn.execute("SELECT emails FROM contacts WHERE id=?", (row[0],)).fetchone()
-            try:
-                if email.lower() in [e.lower() for e in json.loads(full[0] or "[]")]:
-                    return row[0]
-            except Exception:
-                pass
+        existing_id = lookup.find_by_email(email)
+        if existing_id:
+            return existing_id
     if name and len(name) > 2:
-        rows = conn.execute("SELECT id, name FROM contacts").fetchall()
-        for row in rows:
-            if name_similarity(name, row[1]) >= 0.85:
-                return row[0]
+        return lookup.find_by_name(name, threshold=0.85)
     return None
 
 
-def upsert_contact(conn, name, email, event_date):
+def upsert_contact(conn, lookup, name, email, event_date):
     now = datetime.utcnow().isoformat()
-    existing_id = find_existing_contact(conn, email, name)
+    existing_id = find_existing_contact(lookup, email, name)
 
     if existing_id:
         row = conn.execute("SELECT last_contact_date, emails FROM contacts WHERE id=?", (existing_id,)).fetchone()
@@ -133,6 +121,8 @@ def upsert_contact(conn, name, email, event_date):
         else:
             conn.execute("UPDATE contacts SET emails=?, updated_at=? WHERE id=?",
                          (json.dumps(list(existing_emails)), now, existing_id))
+        if email:
+            lookup.add_email(existing_id, email.lower())
         stats["updated_contacts"] += 1
         return existing_id
     else:
@@ -151,6 +141,7 @@ def upsert_contact(conn, name, email, event_date):
             event_date[:10] if event_date else now[:10],
             now, now,
         ))
+        lookup.add(new_id, name, [email.lower()] if email else [])
         stats["new_contacts"] += 1
         return new_id
 
@@ -266,6 +257,7 @@ def fetch_transcript(recording_id):
 def process_recordings(conn, recordings):
     """Process each recording: extract participants, upsert into CRM."""
     print(f"  Processing {len(recordings)} recordings...", flush=True)
+    lookup = ContactLookup(conn)
     stats["recordings_fetched"] = len(recordings)
 
     for recording in recordings:
@@ -307,7 +299,7 @@ def process_recordings(conn, recordings):
                 continue
 
             try:
-                contact_id = upsert_contact(conn, name, email, event_date)
+                contact_id = upsert_contact(conn, lookup, name, email, event_date)
                 upsert_interaction(conn, contact_id, event_date, title,
                                    rec_id or f"roam-{title[:20]}", summary)
             except Exception as e:

@@ -20,7 +20,6 @@ import sqlite3
 import sys
 import uuid
 from datetime import datetime, timedelta, date
-from difflib import SequenceMatcher
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -29,6 +28,7 @@ from config import (
     ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, ZOOM_USER_EMAIL,
     ENRICHMENT_MODEL,
 )
+from contact_lookup import ContactLookup
 
 import requests
 
@@ -396,36 +396,23 @@ def fetch_participants(token, meeting_id):
 
 
 # -- Contact Matching ----------------------------------------------------------
-def name_similarity(a, b):
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
-
-
-def find_existing_contact(conn, email, name):
+def find_existing_contact(lookup, email, name):
     """Find contact by email then name similarity."""
     if email:
-        email = email.lower()
-        rows = conn.execute("SELECT id FROM contacts WHERE emails LIKE ?", (f"%{email}%",)).fetchall()
-        for row in rows:
-            full = conn.execute("SELECT emails FROM contacts WHERE id=?", (row[0],)).fetchone()
-            try:
-                if email in [e.lower() for e in json.loads(full[0] or "[]")]:
-                    return row[0]
-            except Exception:
-                pass
+        existing_id = lookup.find_by_email(email)
+        if existing_id:
+            return existing_id
 
     if name and len(name) > 2:
-        rows = conn.execute("SELECT id, name FROM contacts").fetchall()
-        for row in rows:
-            if name_similarity(name, row[1]) >= 0.82:
-                return row[0]
+        return lookup.find_by_name(name, threshold=0.82)
 
     return None
 
 
-def upsert_contact(conn, name, email, meeting_date):
+def upsert_contact(conn, lookup, name, email, meeting_date):
     """Upsert contact from Zoom attendee. Returns (contact_id, is_new)."""
     now = datetime.utcnow().isoformat()
-    existing_id = find_existing_contact(conn, email, name)
+    existing_id = find_existing_contact(lookup, email, name)
 
     if existing_id:
         row = conn.execute("SELECT last_contact_date, emails FROM contacts WHERE id=?", (existing_id,)).fetchone()
@@ -444,6 +431,8 @@ def upsert_contact(conn, name, email, meeting_date):
                 "UPDATE contacts SET emails=?, updated_at=? WHERE id=?",
                 (json.dumps(list(existing_emails)), now, existing_id),
             )
+        if email:
+            lookup.add_email(existing_id, email.lower())
         return existing_id, False
     else:
         new_id = str(uuid.uuid4())
@@ -460,6 +449,7 @@ def upsert_contact(conn, name, email, meeting_date):
                 now, now,
             ),
         )
+        lookup.add(new_id, name, [email.lower()] if email else [])
         return new_id, True
 
 
@@ -544,6 +534,9 @@ def main():
     # Migrations
     print("\n[1] Schema migrations", flush=True)
     migrate_schema(conn)
+
+    # Contact matching index (loaded once per run)
+    lookup = ContactLookup(conn)
 
     # Zoom token
     print("\n[2] Authenticating with Zoom", flush=True)
@@ -679,7 +672,7 @@ def main():
                 continue
 
             try:
-                contact_id, is_new = upsert_contact(conn, pname, pemail, meeting_date)
+                contact_id, is_new = upsert_contact(conn, lookup, pname, pemail, meeting_date)
                 if is_new:
                     stats["contacts_new"] += 1
                     print(f"    + New contact: {pname}", flush=True)

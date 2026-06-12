@@ -12,11 +12,11 @@ import sqlite3
 import sys
 import uuid
 from datetime import datetime
-from difflib import SequenceMatcher
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import DB_PATH, ICLOUD_CARDDAV_BASE, ICLOUD_USER, ICLOUD_PASS
+from contact_lookup import ContactLookup
 
 import requests
 import vobject
@@ -270,33 +270,24 @@ def parse_vcard_manual(vcard_text):
     }
 
 
-def name_similarity(a, b):
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
-
-
-def find_existing_contact(conn, contact):
+def find_existing_contact(lookup, contact):
     """Find existing contact by email first, then name similarity."""
     # Email match
     for email in contact["emails"]:
-        rows = conn.execute("SELECT id, name, emails FROM contacts WHERE emails LIKE ?", (f'%{email}%',)).fetchall()
-        for row in rows:
-            existing_emails = json.loads(row[2] or "[]")
-            if email in [e.lower() for e in existing_emails]:
-                return row[0]
+        existing_id = lookup.find_by_email(email)
+        if existing_id:
+            return existing_id
 
     # Name similarity match (threshold 0.85)
     if contact["name"]:
-        rows = conn.execute("SELECT id, name FROM contacts").fetchall()
-        for row in rows:
-            if name_similarity(contact["name"], row[1]) >= 0.85:
-                return row[0]
+        return lookup.find_by_name(contact["name"], threshold=0.85)
 
     return None
 
 
-def upsert_contact(conn, contact):
+def upsert_contact(conn, lookup, contact):
     now = datetime.utcnow().isoformat()
-    existing_id = find_existing_contact(conn, contact)
+    existing_id = find_existing_contact(lookup, contact)
 
     if existing_id:
         # Merge emails and phones with existing
@@ -346,6 +337,8 @@ def upsert_contact(conn, contact):
             now,
             existing_id,
         ))
+        for email in contact["emails"]:
+            lookup.add_email(existing_id, email)
         stats["updated"] += 1
         return existing_id
     else:
@@ -376,6 +369,7 @@ def upsert_contact(conn, contact):
             now,
             now,
         ))
+        lookup.add(new_id, contact["name"], contact["emails"])
         stats["new"] += 1
         return new_id
 
@@ -395,13 +389,14 @@ def main():
         return stats
 
     print(f"  Parsing and upserting {len(vcards)} contacts...", flush=True)
+    lookup = ContactLookup(conn)
     for vcard_text in vcards:
         try:
             contact = parse_vcard(vcard_text)
             if not contact or not contact["name"]:
                 stats["skipped"] += 1
                 continue
-            upsert_contact(conn, contact)
+            upsert_contact(conn, lookup, contact)
         except Exception as e:
             stats["errors"] += 1
             print(f"  [ERROR] {e}", flush=True)

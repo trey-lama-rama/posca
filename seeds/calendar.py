@@ -13,11 +13,11 @@ import subprocess
 import sys
 import uuid
 from datetime import datetime
-from difflib import SequenceMatcher
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import DB_PATH, ACCOUNTS, ACCOUNT_EMAILS, GOG_BIN
+from contact_lookup import ContactLookup
 
 # Use the first account as the default calendar account
 ACCOUNT = ACCOUNTS[0]["address"] if ACCOUNTS else ""
@@ -40,34 +40,22 @@ def run_gog(args):
     return json.loads(result.stdout)
 
 
-def name_similarity(a, b):
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
-
-
-def find_existing_contact(conn, email, name):
+def find_existing_contact(lookup, email, name):
     if email:
-        rows = conn.execute("SELECT id FROM contacts WHERE emails LIKE ?", (f'%{email}%',)).fetchall()
-        for row in rows:
-            full = conn.execute("SELECT emails FROM contacts WHERE id=?", (row[0],)).fetchone()
-            try:
-                if email.lower() in [e.lower() for e in json.loads(full[0] or "[]")]:
-                    return row[0]
-            except Exception:
-                pass
+        existing_id = lookup.find_by_email(email)
+        if existing_id:
+            return existing_id
 
     if name and len(name) > 2:
-        rows = conn.execute("SELECT id, name FROM contacts").fetchall()
-        for row in rows:
-            if name_similarity(name, row[1]) >= 0.85:
-                return row[0]
+        return lookup.find_by_name(name, threshold=0.85)
 
     return None
 
 
-def upsert_contact_calendar(conn, name, email, event_date, accepted):
+def upsert_contact_calendar(conn, lookup, name, email, event_date, accepted):
     now = datetime.utcnow().isoformat()
     rel_type = "warm" if accepted else "cold-inbound"
-    existing_id = find_existing_contact(conn, email, name)
+    existing_id = find_existing_contact(lookup, email, name)
 
     if existing_id:
         row = conn.execute("SELECT last_contact_date, emails FROM contacts WHERE id=?", (existing_id,)).fetchone()
@@ -83,6 +71,8 @@ def upsert_contact_calendar(conn, name, email, event_date, accepted):
         else:
             conn.execute("UPDATE contacts SET emails=?, updated_at=? WHERE id=?",
                          (json.dumps(list(existing_emails)), now, existing_id))
+        if email:
+            lookup.add_email(existing_id, email.lower())
         stats["updated_contacts"] += 1
         return existing_id
     else:
@@ -99,6 +89,7 @@ def upsert_contact_calendar(conn, name, email, event_date, accepted):
             event_date[:10] if event_date else now[:10],
             now, now,
         ))
+        lookup.add(new_id, name, [email.lower()] if email else [])
         stats["new_contacts"] += 1
         return new_id
 
@@ -154,7 +145,7 @@ def upsert_interaction_calendar(conn, contact_id, event_date, subject, event_id,
     return True
 
 
-def process_event(conn, event):
+def process_event(conn, lookup, event):
     title = event.get("title") or event.get("summary", "")
     event_id = event.get("id") or event.get("eventId", "")
     start = event.get("start") or event.get("startTime", "")
@@ -193,7 +184,7 @@ def process_event(conn, event):
             continue
 
         try:
-            contact_id = upsert_contact_calendar(conn, name, email, event_date, accepted)
+            contact_id = upsert_contact_calendar(conn, lookup, name, email, event_date, accepted)
             upsert_interaction_calendar(conn, contact_id, event_date, title, event_id, description, location)
         except Exception as e:
             stats["errors"] += 1
@@ -216,9 +207,10 @@ def main():
     events = result.get("events", [])
     print(f"  Found {len(events)} events", flush=True)
 
+    lookup = ContactLookup(conn)
     for event in events:
         try:
-            process_event(conn, event)
+            process_event(conn, lookup, event)
         except Exception as e:
             stats["errors"] += 1
             print(f"  [ERROR] processing event: {e}", flush=True)

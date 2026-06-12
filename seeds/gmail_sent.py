@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import DB_PATH, ACCOUNTS, ACCOUNT_EMAILS, GOG_BIN
+from contact_lookup import ContactLookup
 
 # Domains belonging to the sending accounts — derived from config
 OWN_DOMAINS = {addr.split("@")[1] for addr in ACCOUNT_EMAILS}
@@ -91,21 +92,9 @@ def is_noise_email(email_addr):
     return False
 
 
-def email_in_crm(conn, email_addr):
+def email_in_crm(lookup, email_addr):
     """Return True if email_addr already exists in any contact's emails JSON array."""
-    email_lower = email_addr.lower()
-    rows = conn.execute(
-        "SELECT emails FROM contacts WHERE emails LIKE ?",
-        (f'%{email_lower}%',)
-    ).fetchall()
-    for (emails_json,) in rows:
-        try:
-            arr = json.loads(emails_json or "[]")
-            if email_lower in [e.lower() for e in arr]:
-                return True
-        except Exception:
-            pass
-    return False
+    return lookup.find_by_email(email_addr) is not None
 
 
 def generate_id(conn):
@@ -183,7 +172,7 @@ def parse_recipients_from_thread(thread_output, account_address):
     return recipients
 
 
-def scan_account(conn, account_cfg, max_messages, insert_limit, insert_count):
+def scan_account(conn, lookup, account_cfg, max_messages, insert_limit, insert_count):
     """
     Scan sent mail for one account and insert new contacts.
     Returns updated insert_count.
@@ -267,7 +256,7 @@ def scan_account(conn, account_cfg, max_messages, insert_limit, insert_count):
                 stats["skipped_filtered"] += 1
                 continue
 
-            if email_in_crm(conn, email):
+            if email_in_crm(lookup, email):
                 stats["skipped_crm"] += 1
                 continue
 
@@ -276,6 +265,7 @@ def scan_account(conn, account_cfg, max_messages, insert_limit, insert_count):
 
             try:
                 new_id = insert_contact(conn, name, email, addr, msg_date)
+                lookup.add(new_id, name, [email])
                 stats["new_contacts"] += 1
                 insert_count += 1
                 print(f"    [NEW] {name} <{email}> (from thread {thread_id[:12]}...)", flush=True)
@@ -307,6 +297,7 @@ def main():
 
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA journal_mode=WAL")
+    lookup = ContactLookup(conn)
 
     insert_count = 0
 
@@ -315,7 +306,7 @@ def main():
             print(f"\n  Insert limit reached after first account, skipping remaining.", flush=True)
             break
         try:
-            insert_count = scan_account(conn, acct, args.max_messages, args.limit, insert_count)
+            insert_count = scan_account(conn, lookup, acct, args.max_messages, args.limit, insert_count)
         except Exception as e:
             print(f"  [ERROR] Account {acct['address']}: {e}", flush=True)
             stats["errors"] += 1
