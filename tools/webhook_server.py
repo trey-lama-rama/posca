@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import (
     get_secret, LOG_DIR, ROOT,
-    SUPABASE_URL, SUPABASE_KEY, ROAM_API_KEY,
+    ROAM_API_KEY,
 )
 
 LOG_FILE = os.path.join(LOG_DIR, "crm-webhook.log")

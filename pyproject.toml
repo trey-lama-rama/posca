@@ -1,0 +1,9 @@
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+# F = pyflakes, E9 = syntax/runtime errors.
+# F541 (f-string without placeholders) and F841 (unused local) are
+# cosmetic in this codebase and intentionally not enforced.
+select = ["F", "E9"]
+ignore = ["F541", "F841"]

@@ -6,7 +6,6 @@ Idempotent. Matches on email first, then name similarity.
 
 import html
 import json
-import os
 import re
 import sqlite3
 import sys

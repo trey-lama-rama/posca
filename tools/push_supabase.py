@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """push_supabase.py — Read all records from local SQLite CRM DB and upsert to Supabase."""
 
-import json
 import logging
 import sys
 import sqlite3

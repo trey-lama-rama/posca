@@ -11,7 +11,6 @@ Usage:
   keep, reason = is_real_contact(from_name, from_email, subject, snippet)
 """
 
-import json
 import logging
 import os
 import sqlite3

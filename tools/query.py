@@ -16,7 +16,7 @@ import uuid
 
 # ── Config ────────────────────────────────────────────────────────────────────
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from config import DB_PATH, ROOT
+from config import DB_PATH
 
 MAX_RESULTS = 10
 

@@ -5,14 +5,13 @@ Idempotent. Only inserts; skips addresses already in contacts.emails JSON array.
 """
 
 import json
-import os
 import re
 import sqlite3
 import subprocess
 import sys
 import argparse
 from datetime import datetime
-from email.utils import getaddresses, parseaddr
+from email.utils import getaddresses
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

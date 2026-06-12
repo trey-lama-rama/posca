@@ -6,7 +6,6 @@ Idempotent — skips interactions already logged by calendar_event_id.
 """
 
 import json
-import os
 import re
 import sqlite3
 import subprocess

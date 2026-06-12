@@ -5,7 +5,6 @@ Idempotent. Noise-filtered. Upserts into contacts + interactions tables.
 """
 
 import json
-import os
 import re
 import sqlite3
 import subprocess

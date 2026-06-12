@@ -27,7 +27,6 @@ Idempotent: skips contacts with linkedin_enriched_at set (unless --force)
 
 import argparse
 import json
-import os
 import re
 import sqlite3
 import sys
