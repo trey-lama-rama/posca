@@ -73,7 +73,13 @@ class ContactLookup:
             return None
         lowered = str(name).lower()
         for existing_name, contact_id in self._by_name.items():
-            if SequenceMatcher(None, lowered, existing_name).ratio() >= threshold:
+            # ratio() <= quick_ratio() <= real_quick_ratio() (documented upper
+            # bounds), so gating on the cheap bounds skips only rows that could
+            # never reach the threshold — results are identical, just faster.
+            matcher = SequenceMatcher(None, lowered, existing_name)
+            if (matcher.real_quick_ratio() >= threshold
+                    and matcher.quick_ratio() >= threshold
+                    and matcher.ratio() >= threshold):
                 return contact_id
         return None
 
