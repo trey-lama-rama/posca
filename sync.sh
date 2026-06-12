@@ -142,6 +142,15 @@ else
     log "Step 12: Skipping embeddings (VOYAGE_API_KEY not set)."
 fi
 
+# ── Step 12b: Duplicate report (REPORT-ONLY — never merges anything) ────────
+log "Step 12b: Writing duplicate-contact report (report-only)..."
+if python3 tools/find_dupes.py > data/dupes-report.txt 2>&1; then
+    DUPE_COUNT=$(head -1 data/dupes-report.txt)
+    log "Dupes report written to data/dupes-report.txt ($DUPE_COUNT)"
+else
+    log "Dupes report failed (non-fatal); see data/dupes-report.txt"
+fi
+
 # ── Summary ──────────────────────────────────────────────────────────────────
 log "========================================="
 log "SYNC SUMMARY"
