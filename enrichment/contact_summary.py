@@ -25,6 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import DB_PATH, LOG_DIR, ENRICHMENT_MODEL, RATE_LIMIT_SECONDS, get_secret
+from costguard import CostGuard, BudgetExceeded
 
 import openai
 
@@ -102,8 +103,9 @@ def build_contact_context(c, interactions):
     return "\n".join(parts)
 
 
-def generate_summary(client, contact_context):
-    """Use LLM to generate a 2-3 sentence contact summary."""
+def generate_summary(client, contact_context, guard=None):
+    """Use LLM to generate a 2-3 sentence contact summary.
+    Raises BudgetExceeded (via guard) before calling the API if over budget."""
     prompt = (
         f"You are writing a concise briefing for: {OWNER_CONTEXT}.\n\n"
         f"Contact information:\n{contact_context}\n\n"
@@ -115,6 +117,9 @@ def generate_summary(client, contact_context):
         "Do not speculate beyond the provided data. "
         "If insufficient data, write what you know and note 'Limited data available.'"
     )
+
+    if guard:
+        guard.charge(ENRICHMENT_MODEL, prompt, max_output_tokens=150)
 
     try:
         resp = client.chat.completions.create(
@@ -156,6 +161,7 @@ def main():
         sys.exit(1)
 
     client = openai.OpenAI(api_key=api_key)
+    guard = CostGuard()
     conn = get_conn()
     _ensure_col(conn)
 
@@ -203,7 +209,12 @@ def main():
     for c in contacts:
         interactions = get_recent_interactions(conn, c["id"])
         context = build_contact_context(c, interactions)
-        summary = generate_summary(client, context)
+        try:
+            summary = generate_summary(client, context, guard=guard)
+        except BudgetExceeded as e:
+            # Soft stop: log and end the run cleanly (exit 0)
+            log(f"Budget cap reached — stopping summaries early: {e}")
+            break
 
         if summary:
             new_notes = inject_summary_into_notes(c["notes"], summary)

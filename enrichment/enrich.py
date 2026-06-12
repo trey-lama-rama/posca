@@ -37,6 +37,7 @@ from config import (
     DB_PATH, LOG_DIR, ENRICHMENT_MODEL, RATE_LIMIT_SECONDS,
     TAVILY_SCRIPT, GENERIC_DOMAINS, get_secret,
 )
+from costguard import CostGuard, BudgetExceeded
 
 import openai
 
@@ -171,10 +172,11 @@ def tavily_search(query):
         return ""
 
 
-def extract_with_gpt(client, name, search_results_combined):
+def extract_with_gpt(client, name, search_results_combined, guard=None):
     """
     Use LLM to extract enrichment data from combined search results.
     Returns dict with keys: company, role, industry, linkedin, twitter, education, news, location.
+    Raises BudgetExceeded (via guard) before calling the API if over budget.
     """
     if not search_results_combined or len(search_results_combined.strip()) < 20:
         return {}
@@ -197,6 +199,9 @@ def extract_with_gpt(client, name, search_results_combined):
         "Do not guess. Return null for anything uncertain. "
         "company and role must match this specific person, not a namesake."
     )
+
+    if guard:
+        guard.charge(ENRICHMENT_MODEL, prompt, max_output_tokens=250)
 
     try:
         resp = client.chat.completions.create(
@@ -266,7 +271,7 @@ def build_enrichment_notes(existing_notes, data):
     return (existing + "\n\n" + block).strip() if existing else block
 
 
-def enrich_contact(conn, client, contact):
+def enrich_contact(conn, client, contact, guard=None):
     """
     Search and apply enrichment for one contact.
     Returns dict of what was found (empty dict if nothing).
@@ -286,7 +291,7 @@ def enrich_contact(conn, client, contact):
             combined_results += f"\n--- Query: {q} ---\n{result}\n"
         time.sleep(0.5)
 
-    data = extract_with_gpt(client, name, combined_results)
+    data = extract_with_gpt(client, name, combined_results, guard=guard)
 
     now = datetime.utcnow().isoformat()
     updates = ["enriched_at = ?"]
@@ -342,6 +347,7 @@ def main():
         sys.exit(1)
 
     client = openai.OpenAI(api_key=api_key)
+    guard = CostGuard()
     conn = get_conn()
     ensure_enriched_column(conn)
 
@@ -359,7 +365,7 @@ def main():
 
     for contact in contacts:
         try:
-            data = enrich_contact(conn, client, contact)
+            data = enrich_contact(conn, client, contact, guard=guard)
             has_primary = bool(data.get("company") or data.get("role"))
             has_supplemental = bool(data.get("industry") or data.get("linkedin") or
                                     data.get("twitter") or data.get("education"))
@@ -375,6 +381,12 @@ def main():
             else:
                 log.info("  -> %s: no data found", contact["name"])
                 no_data += 1
+        except BudgetExceeded as e:
+            # Soft stop: log, end the run cleanly (exit 0). Contact not marked
+            # enriched, so it will be retried on the next run's budget.
+            log.warning("Budget cap reached — stopping enrichment early: %s", e)
+            dlog(f"Budget cap reached — soft stop: {e}")
+            break
         except Exception as e:
             log.error("  -> %s: ERROR %s", contact["name"], e)
             no_data += 1

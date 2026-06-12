@@ -75,6 +75,7 @@ _enrich = _cfg.get("enrichment", {})
 ENRICHMENT_MODEL = _enrich.get("model", "gpt-4o-mini")
 TAVILY_SCRIPT = _enrich.get("tavily_script")
 RATE_LIMIT_SECONDS = _enrich.get("rate_limit_seconds", 1.2)
+ENRICHMENT_BUDGET_USD = _enrich.get("budget_usd", 5.0)
 
 # ── Sync settings ──────────────────────────────────────────────────────────────
 

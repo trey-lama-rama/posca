@@ -33,6 +33,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import DB_PATH, LOG_DIR, ENRICHMENT_MODEL, get_secret
+from costguard import CostGuard, BudgetExceeded
 
 import openai
 
@@ -108,11 +109,12 @@ def classify_keyword(subject, summary):
 
 # -- LLM batch classification -------------------------------------------------
 
-def classify_batch_gpt(client, interactions):
+def classify_batch_gpt(client, interactions, guard=None):
     """
     Classify a batch of interactions using the configured LLM.
     interactions: list of {id, subject, summary, channel}
     Returns dict: {id: interaction_type}
+    Raises BudgetExceeded (via guard) before calling the API if over budget.
     """
     if not interactions:
         return {}
@@ -139,6 +141,9 @@ def classify_batch_gpt(client, interactions):
         + "\n\n"
         'Return a JSON object mapping index (as string) to category, e.g. {"0":"meeting","1":"follow_up"}'
     )
+
+    if guard:
+        guard.charge(ENRICHMENT_MODEL, prompt, max_output_tokens=200)
 
     try:
         resp = client.chat.completions.create(
@@ -194,6 +199,7 @@ def main():
 
     api_key = get_secret("OPENAI_API_KEY")
     use_gpt = bool(api_key)
+    guard = CostGuard()
     if use_gpt:
         client = openai.OpenAI(api_key=api_key)
         log("Using LLM for classification")
@@ -207,7 +213,13 @@ def main():
         batch = [dict(r) for r in rows[batch_start:batch_start + batch_size]]
 
         if use_gpt:
-            gpt_results = classify_batch_gpt(client, batch)
+            try:
+                gpt_results = classify_batch_gpt(client, batch, guard=guard)
+            except BudgetExceeded as e:
+                # Soft stop: keyword heuristics for the rest of the run
+                log(f"Budget cap reached — using keyword heuristics for remaining batches: {e}")
+                use_gpt = False
+                gpt_results = {}
         else:
             gpt_results = {}
 

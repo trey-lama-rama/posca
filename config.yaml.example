@@ -28,6 +28,7 @@ enrichment:
   model: gpt-4o-mini
   tavily_script: null  # optional: path to tavily search script
   rate_limit_seconds: 1.2
+  budget_usd: 5.0      # max estimated LLM spend per run (soft stop)
 
 # Nightly sync settings
 sync:
