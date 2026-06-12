@@ -43,6 +43,11 @@ import openai
 LOG_PATH = os.path.join(LOG_DIR, "enrichment.log")
 DEEPENING_LOG = os.path.join(LOG_DIR, "autonomous-deepening.log")
 
+# Only these columns may ever appear in the dynamic UPDATE built by enrich_contact()
+ALLOWED_UPDATE_COLUMNS = frozenset({
+    "enriched_at", "company", "role", "notes", "updated_at",
+})
+
 logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s] %(message)s",
@@ -309,6 +314,10 @@ def enrich_contact(conn, client, contact):
     updates.append("updated_at = ?")
     values.append(now)
     values.append(contact["id"])
+
+    for clause in updates:
+        col = clause.split("=")[0].strip()
+        assert col in ALLOWED_UPDATE_COLUMNS, f"Refusing to update unexpected column: {col!r}"
 
     conn.execute(f"UPDATE contacts SET {', '.join(updates)} WHERE id=?", values)
     conn.commit()

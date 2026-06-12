@@ -53,6 +53,12 @@ LOG_PATH = os.path.join(os.path.dirname(DB_PATH), "..", "logs", "crm-apollo.log"
 # Sources that outrank Apollo in the confidence hierarchy
 PROTECTED_SOURCES = {"icloud", "gmail"}
 
+# Only these columns may ever appear in the dynamic UPDATE built by apply_updates()
+ALLOWED_UPDATE_COLUMNS = frozenset({
+    "company", "role", "social_profiles", "address", "emails", "phones",
+    "personal_data_source", "notes", "apollo_enriched_at", "updated_at",
+})
+
 logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s] %(message)s",
@@ -377,6 +383,7 @@ def apply_updates(conn, contact_id, column_updates, prov_updates, new_notes, dry
     values = []
 
     for col, val in column_updates.items():
+        assert col in ALLOWED_UPDATE_COLUMNS, f"Refusing to update unexpected column: {col!r}"
         sets.append(f"{col} = ?")
         values.append(val)
 

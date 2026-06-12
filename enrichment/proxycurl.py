@@ -42,6 +42,13 @@ import requests
 
 PROXYCURL_BASE = "https://nubela.co/proxycurl/api"
 
+# Only these columns may ever appear in the dynamic UPDATE built by update_contact()
+ALLOWED_UPDATE_COLUMNS = frozenset({
+    "linkedin_url", "linkedin_headline", "linkedin_current_company",
+    "linkedin_current_role", "linkedin_location", "linkedin_education",
+    "linkedin_connections", "linkedin_enriched_at",
+})
+
 
 def get_api_key():
     key = get_secret("PROXYCURL_API_KEY")
@@ -182,6 +189,8 @@ def update_contact(conn, contact_id: str, linkedin_url: str, profile_fields: dic
         return
 
     fields = {**profile_fields, "linkedin_url": linkedin_url, "linkedin_enriched_at": datetime.now(timezone.utc).isoformat()}
+    for col in fields:
+        assert col in ALLOWED_UPDATE_COLUMNS, f"Refusing to update unexpected column: {col!r}"
     set_clause = ", ".join(f"{k} = ?" for k in fields)
     values = list(fields.values()) + [contact_id]
     conn.execute(f"UPDATE contacts SET {set_clause} WHERE id = ?", values)

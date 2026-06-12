@@ -39,6 +39,12 @@ NOISE_DOMAINS = {
 
 stats = {"mined": 0, "found_data": 0, "no_data": 0, "skipped": 0, "errors": 0}
 
+# Only these columns may ever appear in the dynamic UPDATE built by update_contact()
+ALLOWED_UPDATE_COLUMNS = frozenset({
+    "birthday", "address", "anniversary", "website", "phones",
+    "personal_data_source", "gmail_mined_at", "updated_at",
+})
+
 
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
@@ -211,6 +217,8 @@ def update_contact(conn, contact_id, extracted, sources):
     if not updates:
         return False
 
+    for col in updates:
+        assert col in ALLOWED_UPDATE_COLUMNS, f"Refusing to update unexpected column: {col!r}"
     set_clauses = ", ".join(f"{k} = ?" for k in updates)
     values = list(updates.values())
 
