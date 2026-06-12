@@ -85,12 +85,17 @@ def _account_stat_prefix(addr):
 
 
 def run_gog(args):
-    """Run GOG CLI and return parsed JSON."""
+    """Run GOG CLI and return parsed JSON. Returns {} on unparseable output."""
     cmd = [GOG_BIN] + args
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     if result.returncode != 0:
         raise RuntimeError(f"GOG failed: {result.stderr[:200]}")
-    return json.loads(result.stdout)
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as e:
+        print(f"    [ERROR] GOG returned invalid JSON ({e}): {result.stdout[:200]!r}", flush=True)
+        stats["errors"] += 1
+        return {}
 
 
 def is_noise_email(email_addr):

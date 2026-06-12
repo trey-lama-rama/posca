@@ -114,10 +114,14 @@ def search_gmail(query, account):
         )
         if result.returncode != 0:
             return []
-        data = json.loads(result.stdout)
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            print(f"    [ERROR] GOG search returned invalid JSON ({e}): {result.stdout[:200]!r}", flush=True)
+            return []
         messages = data if isinstance(data, list) else data.get("messages", [])
         return messages
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
+    except (subprocess.TimeoutExpired, Exception):
         return []
 
 
@@ -131,10 +135,14 @@ def get_message_body(message_id, account):
         )
         if result.returncode != 0:
             return ""
-        data = json.loads(result.stdout)
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            print(f"    [ERROR] GOG get returned invalid JSON ({e}): {result.stdout[:200]!r}", flush=True)
+            return ""
         body = data.get("body", "")
         return body[:MAX_BODY_CHARS] if body else ""
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
+    except (subprocess.TimeoutExpired, Exception):
         return ""
 
 

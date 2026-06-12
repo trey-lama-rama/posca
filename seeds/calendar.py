@@ -37,7 +37,12 @@ def run_gog(args):
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     if result.returncode != 0:
         raise RuntimeError(f"GOG calendar failed: {result.stderr[:300]}")
-    return json.loads(result.stdout)
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as e:
+        print(f"  [ERROR] GOG returned invalid JSON ({e}): {result.stdout[:200]!r}", flush=True)
+        stats["errors"] += 1
+        return {}
 
 
 def find_existing_contact(lookup, email, name):

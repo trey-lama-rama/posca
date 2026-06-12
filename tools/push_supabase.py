@@ -96,16 +96,21 @@ def push_table(base_url, key, table, rows, supabase_cols=None):
                     f"  {table} batch {batch_num}/{batches}: HTTP {resp.status_code} — retrying row-by-row"
                 )
                 for row in batch:
+                    row_id = row.get("id", "?")
                     try:
                         r2 = upsert_batch(base_url, key, table, [row])
                         if r2.ok:
                             success += 1
                         else:
                             errors += 1
-                            log.error(f"  {table} row skip: {r2.status_code} — {r2.text[:200]}")
+                            log.error(
+                                f"  {table} row skip: id={row_id} "
+                                f"name={row.get('name', row.get('subject', ''))!r} — "
+                                f"HTTP {r2.status_code}: {r2.text[:200]}"
+                            )
                     except Exception as re:
                         errors += 1
-                        log.error(f"  {table} row exception: {re}")
+                        log.error(f"  {table} row exception: id={row_id} — {re}")
         except Exception as e:
             errors += len(batch)
             log.error(f"  {table} batch {batch_num}/{batches}: exception — {e}")
