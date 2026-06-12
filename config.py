@@ -40,6 +40,43 @@ def get_secret(name, required=False):
     return val
 
 
+# ── Validation helpers ─────────────────────────────────────────────────────────
+# Invalid config values log a clear warning and fall back to the default
+# instead of crashing the pipeline.
+
+def _warn_invalid(name, value, default, why):
+    print(
+        f"WARNING: config value {name}={value!r} is invalid ({why}); "
+        f"using default {default!r}",
+        file=sys.stderr,
+    )
+
+
+def _valid_number(value, default, name, minimum=None, integer=False):
+    """Validate a numeric config value (type + range). Falls back to default."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        _warn_invalid(name, value, default, "not a number")
+        return default
+    if integer and not isinstance(value, int):
+        if isinstance(value, float) and value.is_integer():
+            value = int(value)
+        else:
+            _warn_invalid(name, value, default, "not an integer")
+            return default
+    if minimum is not None and value < minimum:
+        _warn_invalid(name, value, default, f"must be >= {minimum}")
+        return default
+    return value
+
+
+def _valid_string(value, default, name):
+    """Validate a non-empty string config value. Falls back to default."""
+    if not isinstance(value, str) or not value.strip():
+        _warn_invalid(name, value, default, "must be a non-empty string")
+        return default
+    return value.strip()
+
+
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
 DB_PATH = str(ROOT / _cfg.get("database", "data/crm.db"))
@@ -72,18 +109,26 @@ ZOOM_CLIENT_SECRET = get_secret("ZOOM_CLIENT_SECRET")
 # ── Enrichment ─────────────────────────────────────────────────────────────────
 
 _enrich = _cfg.get("enrichment", {})
-ENRICHMENT_MODEL = _enrich.get("model", "gpt-4o-mini")
+ENRICHMENT_MODEL = _valid_string(
+    _enrich.get("model", "gpt-4o-mini"), "gpt-4o-mini", "enrichment.model")
 TAVILY_SCRIPT = _enrich.get("tavily_script")
-RATE_LIMIT_SECONDS = _enrich.get("rate_limit_seconds", 1.2)
-ENRICHMENT_BUDGET_USD = _enrich.get("budget_usd", 5.0)
+RATE_LIMIT_SECONDS = _valid_number(
+    _enrich.get("rate_limit_seconds", 1.2), 1.2, "enrichment.rate_limit_seconds", minimum=0)
+ENRICHMENT_BUDGET_USD = _valid_number(
+    _enrich.get("budget_usd", 5.0), 5.0, "enrichment.budget_usd", minimum=0)
 
 # ── Sync settings ──────────────────────────────────────────────────────────────
 
 _sync = _cfg.get("sync", {})
-STALE_THRESHOLD_DAYS = _sync.get("stale_threshold_days", 180)
-ENRICH_LIMIT = _sync.get("enrich_limit", 30)
-GMAIL_MINE_LIMIT = _sync.get("gmail_mine_limit", 20)
-SUMMARY_LIMIT = _sync.get("summary_limit", 20)
+STALE_THRESHOLD_DAYS = _valid_number(
+    _sync.get("stale_threshold_days", 180), 180, "sync.stale_threshold_days",
+    minimum=1, integer=True)
+ENRICH_LIMIT = _valid_number(
+    _sync.get("enrich_limit", 30), 30, "sync.enrich_limit", minimum=1, integer=True)
+GMAIL_MINE_LIMIT = _valid_number(
+    _sync.get("gmail_mine_limit", 20), 20, "sync.gmail_mine_limit", minimum=1, integer=True)
+SUMMARY_LIMIT = _valid_number(
+    _sync.get("summary_limit", 20), 20, "sync.summary_limit", minimum=1, integer=True)
 
 # ── External tools ─────────────────────────────────────────────────────────────
 
