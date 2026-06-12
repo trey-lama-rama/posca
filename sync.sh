@@ -37,6 +37,11 @@ log "Step 1b: Migrating personal data columns..."
 python3 migrations/migrate_personal_fields.py 2>&1 | tee -a "$LOG"
 log "Personal data columns OK."
 
+# ── Step 1c: June 2026 performance migration (idempotent) ───────────────────
+log "Step 1c: Applying 2026-06 migration (primary_email + indexes)..."
+python3 tools/migrate_2026_06.py 2>&1 | tee -a "$LOG"
+log "2026-06 migration OK."
+
 # ── Step 2: iCloud Contacts seed ─────────────────────────────────────────────
 log "Step 2: Seeding iCloud contacts..."
 python3 seeds/icloud.py 2>&1 | tee -a "$LOG"

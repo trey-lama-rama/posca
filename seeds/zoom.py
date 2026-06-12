@@ -28,7 +28,7 @@ from config import (
     ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, ZOOM_USER_EMAIL,
     ENRICHMENT_MODEL,
 )
-from contact_lookup import ContactLookup
+from contact_lookup import ContactLookup, set_primary_email
 
 import requests
 
@@ -433,6 +433,7 @@ def upsert_contact(conn, lookup, name, email, meeting_date):
             )
         if email:
             lookup.add_email(existing_id, email.lower())
+            set_primary_email(conn, existing_id, [email.lower()], lookup.has_primary_email)
         return existing_id, False
     else:
         new_id = str(uuid.uuid4())
@@ -450,6 +451,7 @@ def upsert_contact(conn, lookup, name, email, meeting_date):
             ),
         )
         lookup.add(new_id, name, [email.lower()] if email else [])
+        set_primary_email(conn, new_id, [email.lower()] if email else [], lookup.has_primary_email)
         return new_id, True
 
 

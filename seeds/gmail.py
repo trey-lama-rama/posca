@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import DB_PATH, ACCOUNTS, GOG_BIN
-from contact_lookup import ContactLookup
+from contact_lookup import ContactLookup, set_primary_email
 
 # LLM filter — lazy import; gracefully degrades if unavailable
 def _llm_filter_available():
@@ -200,6 +200,7 @@ def upsert_contact(conn, lookup, name, email, default_rel_type, source_account, 
                          (json.dumps(list(existing_emails)), now, existing_id))
         if email:
             lookup.add_email(existing_id, email)
+            set_primary_email(conn, existing_id, [email], lookup.has_primary_email)
         return existing_id, False
     else:
         new_id = str(uuid.uuid4())
@@ -216,6 +217,7 @@ def upsert_contact(conn, lookup, name, email, default_rel_type, source_account, 
             now, now,
         ))
         lookup.add(new_id, name, [email] if email else [])
+        set_primary_email(conn, new_id, [email] if email else [], lookup.has_primary_email)
         return new_id, True
 
 

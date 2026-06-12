@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     id TEXT PRIMARY KEY,                          -- UUID
     name TEXT NOT NULL,
     emails TEXT DEFAULT '[]',                     -- JSON array of strings
+    primary_email TEXT,                           -- denormalized: first email, lowercased
     phones TEXT DEFAULT '[]',                     -- JSON array of strings
     company TEXT,
     role TEXT,
@@ -101,11 +102,13 @@ CREATE TABLE IF NOT EXISTS filter_cache (
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(name);
+CREATE INDEX IF NOT EXISTS idx_contacts_primary_email ON contacts(primary_email);
 CREATE INDEX IF NOT EXISTS idx_contacts_last_contact ON contacts(last_contact_date);
 CREATE INDEX IF NOT EXISTS idx_contacts_relationship ON contacts(relationship_type);
 CREATE INDEX IF NOT EXISTS idx_contacts_heat ON contacts(relationship_heat);
 CREATE INDEX IF NOT EXISTS idx_interactions_contact ON interactions(contact_id);
 CREATE INDEX IF NOT EXISTS idx_interactions_date ON interactions(date);
+CREATE INDEX IF NOT EXISTS idx_interactions_contact_date ON interactions(contact_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_action_items_contact ON action_items(contact_id);
 CREATE INDEX IF NOT EXISTS idx_action_items_status ON action_items(status);
 CREATE INDEX IF NOT EXISTS idx_mining_cache_contact ON gmail_mining_cache(contact_id);

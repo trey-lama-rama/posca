@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import DB_PATH, ICLOUD_CARDDAV_BASE, ICLOUD_USER, ICLOUD_PASS
-from contact_lookup import ContactLookup
+from contact_lookup import ContactLookup, set_primary_email
 
 import requests
 import vobject
@@ -339,6 +339,7 @@ def upsert_contact(conn, lookup, contact):
         ))
         for email in contact["emails"]:
             lookup.add_email(existing_id, email)
+        set_primary_email(conn, existing_id, contact["emails"], lookup.has_primary_email)
         stats["updated"] += 1
         return existing_id
     else:
@@ -370,6 +371,7 @@ def upsert_contact(conn, lookup, contact):
             now,
         ))
         lookup.add(new_id, contact["name"], contact["emails"])
+        set_primary_email(conn, new_id, contact["emails"], lookup.has_primary_email)
         stats["new"] += 1
         return new_id
 

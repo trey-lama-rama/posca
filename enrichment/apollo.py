@@ -43,6 +43,7 @@ except ImportError:
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import DB_PATH, GENERIC_DOMAINS, get_conn, get_secret
+from contact_lookup import set_primary_email, table_has_column
 
 APOLLO_BASE = "https://api.apollo.io/api/v1"
 BATCH_SIZE = 10
@@ -360,8 +361,12 @@ def build_apollo_notes(existing_notes, notes_block):
 
 # ── Database update ──────────────────────────────────────────────────────────
 
+_HAS_PRIMARY_EMAIL = None  # lazily cached column check
+
+
 def apply_updates(conn, contact_id, column_updates, prov_updates, new_notes, dry_run=False):
     """Write enriched data back to the contact row."""
+    global _HAS_PRIMARY_EMAIL
     now = datetime.now(timezone.utc).isoformat()
 
     if dry_run:
@@ -396,6 +401,17 @@ def apply_updates(conn, contact_id, column_updates, prov_updates, new_notes, dry
     values.append(contact_id)
 
     conn.execute(f"UPDATE contacts SET {', '.join(sets)} WHERE id=?", values)
+
+    # Maintain denormalized primary_email if this update merged emails
+    if "emails" in column_updates:
+        if _HAS_PRIMARY_EMAIL is None:
+            _HAS_PRIMARY_EMAIL = table_has_column(conn, "contacts", "primary_email")
+        try:
+            emails_list = json.loads(column_updates["emails"])
+        except (json.JSONDecodeError, TypeError):
+            emails_list = []
+        set_primary_email(conn, contact_id, emails_list, _HAS_PRIMARY_EMAIL)
+
     conn.commit()
 
 

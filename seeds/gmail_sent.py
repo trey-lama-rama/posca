@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import DB_PATH, ACCOUNTS, ACCOUNT_EMAILS, GOG_BIN
-from contact_lookup import ContactLookup
+from contact_lookup import ContactLookup, set_primary_email
 
 # Domains belonging to the sending accounts — derived from config
 OWN_DOMAINS = {addr.split("@")[1] for addr in ACCOUNT_EMAILS}
@@ -266,6 +266,7 @@ def scan_account(conn, lookup, account_cfg, max_messages, insert_limit, insert_c
             try:
                 new_id = insert_contact(conn, name, email, addr, msg_date)
                 lookup.add(new_id, name, [email])
+                set_primary_email(conn, new_id, [email], lookup.has_primary_email)
                 stats["new_contacts"] += 1
                 insert_count += 1
                 print(f"    [NEW] {name} <{email}> (from thread {thread_id[:12]}...)", flush=True)

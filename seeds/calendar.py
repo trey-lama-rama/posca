@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import DB_PATH, ACCOUNTS, ACCOUNT_EMAILS, GOG_BIN
-from contact_lookup import ContactLookup
+from contact_lookup import ContactLookup, set_primary_email
 
 # Use the first account as the default calendar account
 ACCOUNT = ACCOUNTS[0]["address"] if ACCOUNTS else ""
@@ -73,6 +73,7 @@ def upsert_contact_calendar(conn, lookup, name, email, event_date, accepted):
                          (json.dumps(list(existing_emails)), now, existing_id))
         if email:
             lookup.add_email(existing_id, email.lower())
+            set_primary_email(conn, existing_id, [email.lower()], lookup.has_primary_email)
         stats["updated_contacts"] += 1
         return existing_id
     else:
@@ -90,6 +91,7 @@ def upsert_contact_calendar(conn, lookup, name, email, event_date, accepted):
             now, now,
         ))
         lookup.add(new_id, name, [email.lower()] if email else [])
+        set_primary_email(conn, new_id, [email.lower()] if email else [], lookup.has_primary_email)
         stats["new_contacts"] += 1
         return new_id
 

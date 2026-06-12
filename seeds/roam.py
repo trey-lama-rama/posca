@@ -23,7 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import DB_PATH, ROAM_API_KEY
-from contact_lookup import ContactLookup
+from contact_lookup import ContactLookup, set_primary_email
 
 import requests
 
@@ -123,6 +123,7 @@ def upsert_contact(conn, lookup, name, email, event_date):
                          (json.dumps(list(existing_emails)), now, existing_id))
         if email:
             lookup.add_email(existing_id, email.lower())
+            set_primary_email(conn, existing_id, [email.lower()], lookup.has_primary_email)
         stats["updated_contacts"] += 1
         return existing_id
     else:
@@ -142,6 +143,7 @@ def upsert_contact(conn, lookup, name, email, event_date):
             now, now,
         ))
         lookup.add(new_id, name, [email.lower()] if email else [])
+        set_primary_email(conn, new_id, [email.lower()] if email else [], lookup.has_primary_email)
         stats["new_contacts"] += 1
         return new_id
 

@@ -31,6 +31,7 @@ class ContactLookup:
     def __init__(self, conn):
         self._by_email = {}   # lowercased email -> contact id (first row wins)
         self._by_name = {}    # lowercased name  -> contact id (first row wins)
+        self.has_primary_email = table_has_column(conn, "contacts", "primary_email")
         for row in conn.execute("SELECT id, name, emails FROM contacts"):
             self._index_row(row[0], row[1], row[2])
 
@@ -84,3 +85,24 @@ class ContactLookup:
         if name and len(name) >= min_name_len:
             return self.find_by_name(name, threshold)
         return None
+
+
+def table_has_column(conn, table, column):
+    return any(r[1] == column for r in conn.execute(f"PRAGMA table_info({table})"))
+
+
+def set_primary_email(conn, contact_id, emails, enabled=True):
+    """
+    Maintain the denormalized contacts.primary_email column.
+    Sets it from the first email if it is currently NULL/empty. No-op when
+    the column doesn't exist yet (enabled=False) or there are no emails.
+    """
+    if not enabled or not emails:
+        return
+    first = next((str(e).strip().lower() for e in emails if e), None)
+    if not first:
+        return
+    conn.execute(
+        "UPDATE contacts SET primary_email = COALESCE(NULLIF(primary_email, ''), ?) WHERE id = ?",
+        (first, contact_id),
+    )
